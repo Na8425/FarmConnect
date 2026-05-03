@@ -2,15 +2,27 @@ const express = require('express');
 const router = express.Router();
 const Produce = require('../models/Produce');
 const auth = require('../middleware/auth');
+const multer = require('multer');
+const path = require('path');
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) { cb(null, 'uploads/'); },
+  filename: function (req, file, cb) { cb(null, Date.now() + path.extname(file.originalname)); }
+});
+const upload = multer({ storage: storage });
 
 // Create Listing (Farmer Only)
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, upload.single('image'), async (req, res) => {
   if (req.user.role !== 'farmer') {
     return res.status(403).json({ message: 'Forbidden: Only farmers can list produce' });
   }
 
   try {
-    const produce = new Produce({ ...req.body, farmer: req.user.id });
+    const produceData = { ...req.body, farmer: req.user.id };
+    if (req.file) {
+      produceData.images = [`/uploads/${req.file.filename}`];
+    }
+    const produce = new Produce(produceData);
     await produce.save();
     res.status(201).json(produce);
   } catch (err) {
@@ -43,11 +55,15 @@ router.get('/', async (req, res) => {
 });
 
 // Update Listing
-router.patch('/:id', auth, async (req, res) => {
+router.patch('/:id', auth, upload.single('image'), async (req, res) => {
   try {
+    const updateData = { ...req.body };
+    if (req.file) {
+      updateData.images = [`/uploads/${req.file.filename}`];
+    }
     const produce = await Produce.findOneAndUpdate(
       { _id: req.params.id, farmer: req.user.id },
-      req.body,
+      updateData,
       { new: true }
     );
     if (!produce) return res.status(404).json({ message: 'Produce not found' });

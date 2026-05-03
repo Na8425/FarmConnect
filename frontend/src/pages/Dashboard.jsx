@@ -5,7 +5,7 @@ import { Navigate } from 'react-router-dom';
 
 const INITIAL_FORM = {
   name: '', category: 'Vegetables', description: '', price: '',
-  quantity: '', unit: 'kg', harvestDate: '', status: 'available'
+  quantity: '', unit: 'kg', harvestDate: '', status: 'available', imageUrl: ''
 };
 
 const CATEGORY_EMOJI = { Vegetables: '🥦', Fruits: '🍎', Grains: '🌾', Others: '🌿' };
@@ -15,6 +15,7 @@ const Dashboard = () => {
   const [produce, setProduce] = useState([]);
   const [orders, setOrders] = useState([]);
   const [form, setForm] = useState(INITIAL_FORM);
+  const [imageFile, setImageFile] = useState(null);
   const [editingId, setEditingId] = useState(null); // null = adding, string = editing
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -58,15 +59,22 @@ const Dashboard = () => {
     setError(''); setSuccess('');
     setSubmitting(true);
     try {
+      const formData = new FormData();
+      Object.keys(form).forEach(key => {
+        if (key !== 'imageUrl') formData.append(key, form[key]);
+      });
+      if (imageFile) formData.append('image', imageFile);
+
       if (editingId) {
-        await axios.patch(`/api/produce/${editingId}`, form);
+        await axios.patch(`/api/produce/${editingId}`, formData, { headers: { 'Content-Type': 'multipart/form-data' }});
         setSuccess('✅ Produce updated successfully!');
         setEditingId(null);
       } else {
-        await axios.post('/api/produce', form);
+        await axios.post('/api/produce', formData, { headers: { 'Content-Type': 'multipart/form-data' }});
         setSuccess('✅ Produce listed successfully!');
       }
       setForm(INITIAL_FORM);
+      setImageFile(null);
       fetchDashboardData();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to save produce.');
@@ -86,6 +94,7 @@ const Dashboard = () => {
       unit: item.unit,
       harvestDate: item.harvestDate ? item.harvestDate.slice(0, 10) : '',
       status: item.status,
+      imageUrl: item.images && item.images[0] ? item.images[0] : '',
     });
     setActiveTab('add');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -94,6 +103,7 @@ const Dashboard = () => {
   const handleCancelEdit = () => {
     setEditingId(null);
     setForm(INITIAL_FORM);
+    setImageFile(null);
     setError('');
     setSuccess('');
   };
@@ -197,6 +207,13 @@ const Dashboard = () => {
               <input name="description" className="form-input" placeholder="Brief description..."
                 value={form.description} onChange={handleChange} />
             </div>
+            
+            <div className="form-group">
+              <label className="form-label">Produce Image</label>
+              <input type="file" name="image" className="form-input" accept="image/*"
+                onChange={e => setImageFile(e.target.files[0])} />
+              {form.imageUrl && !imageFile && <div className="text-sm text-muted mt-sm">Current image: <img src={form.imageUrl.startsWith('http') ? form.imageUrl : `http://localhost:5000${form.imageUrl}`} alt="current" style={{height: 40, marginLeft: 10, verticalAlign: 'middle'}}/></div>}
+            </div>
 
             <div className="grid-3">
               <div className="form-group">
@@ -269,9 +286,13 @@ const Dashboard = () => {
             {error && <div className="alert alert-error">{error}</div>}
             {produce.map(item => (
               <div key={item._id} className="card" style={{ flexDirection: 'row', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <span style={{ fontSize: '2.5rem' }}>
-                  {CATEGORY_EMOJI[item.category] || '🌿'}
-                </span>
+                {item.images && item.images[0] ? (
+                  <img src={item.images[0].startsWith('http') ? item.images[0] : `http://localhost:5000${item.images[0]}`} alt={item.name} style={{ width: 60, height: 60, borderRadius: '8px', objectFit: 'cover' }} />
+                ) : (
+                  <span style={{ fontSize: '2.5rem' }}>
+                    {CATEGORY_EMOJI[item.category] || '🌿'}
+                  </span>
+                )}
                 <div style={{ flex: 1 }}>
                   <div className="flex-between">
                     <span className="font-bold text-lg">{item.name}</span>

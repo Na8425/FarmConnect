@@ -47,8 +47,9 @@ const Market = () => {
   };
 
   const filtered = produce.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    (p.farmer?.name || '').toLowerCase().includes(search.toLowerCase())
+    (p.name.toLowerCase().includes(search.toLowerCase()) ||
+    (p.farmer?.name || '').toLowerCase().includes(search.toLowerCase())) &&
+    p.quantity > 0 && p.status !== 'sold out'
   );
 
   const getStatusBadge = (status) => {
@@ -110,8 +111,8 @@ const Market = () => {
         <div className="grid-auto">
           {filtered.map(item => (
             <div key={item._id} className="produce-card">
-              <div className="produce-card-img">
-                {CATEGORY_EMOJIS[item.category] || '🌾'}
+              <div className="produce-card-img" style={item.images && item.images[0] ? { backgroundImage: `url(${item.images[0].startsWith('http') ? item.images[0] : `http://localhost:5000${item.images[0]}`})`, backgroundSize: 'cover', backgroundPosition: 'center', fontSize: 0 } : {}}>
+                {(!item.images || !item.images[0]) && (CATEGORY_EMOJIS[item.category] || '🌾')}
               </div>
               <div className="produce-card-body">
                 <div className="flex-between">

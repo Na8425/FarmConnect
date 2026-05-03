@@ -16,6 +16,9 @@ router.post('/', auth, async (req, res) => {
         return res.status(400).json({ message: `Insufficient stock for ${produce.name}` });
       }
       produce.quantity -= item.quantity;
+      if (produce.quantity <= 0) {
+        produce.status = 'sold out';
+      }
       await produce.save();
     }
 
